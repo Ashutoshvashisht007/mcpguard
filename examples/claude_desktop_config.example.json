@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "/Users/you/walled/.venv/bin/python",
+      "args": [
+        "-m", "mcpguard", "wrap", "--name", "filesystem", "--",
+        "npx", "-y", "@modelcontextprotocol/server-filesystem", "/Users/you/Desktop"
+      ]
+    },
+    "mcpguard-demo": {
+      "command": "/Users/you/walled/.venv/bin/python",
+      "args": [
+        "-m", "mcpguard", "wrap", "--name", "mcpguard-demo", "--",
+        "/Users/you/walled/.venv/bin/python", "-m", "mcpguard", "demo-server"
+      ]
+    }
+  }
+}

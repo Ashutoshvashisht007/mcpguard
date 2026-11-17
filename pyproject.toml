@@ -1,0 +1,30 @@
+[project]
+name = "mcpguard"
+version = "0.1.0"
+description = "Monitor MCP traffic from Claude Desktop and Claude Web and approve or block every tool call from an always-on-top popup."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "aiohttp>=3.9",
+    "mcp>=1.12",
+]
+
+[project.optional-dependencies]
+macos = ["pyobjc-framework-Cocoa>=10; sys_platform == 'darwin'"]
+
+[project.scripts]
+mcpguard = "mcpguard.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcpguard"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
