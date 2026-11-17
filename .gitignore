@@ -7,3 +7,6 @@ __pycache__/
 dist/
 build/
 .DS_Store
+
+# personal testing notes (not part of the submission)
+TESTING.md
