@@ -6,7 +6,8 @@ and calls :meth:`TkApprovalUI.run_mainloop` on the main thread. Cross-thread cal
 Tk thread drains the queue, so no Tk call is ever made off the main thread.
 
 Every pending request gets its own always-on-top window (cascaded), with its own countdown —
-simultaneous requests are decided independently and in any order.
+simultaneous requests are decided independently and in any order. On macOS the windows also
+join every Space, so they appear over full-screen apps too (see ``_mac_float_windows``).
 """
 
 from __future__ import annotations
@@ -51,6 +52,7 @@ class TkApprovalUI(ApprovalUI):
         self._root: Any = None
         self._should_stop: Callable[[], bool] = lambda: False
         self._quit = False
+        self._pumps = 0
 
     # ------------------------------------------------------------------ thread-safe API
     def present(self, request: ApprovalRequest, deadline: float, pending_count: int) -> None:
@@ -72,10 +74,11 @@ class TkApprovalUI(ApprovalUI):
         root.title("MCP Guard")
         self._root = root
         if sys.platform == "darwin":
-            try:  # Cmd+Q / Dock "Quit" → graceful shutdown instead of an abrupt exit
+            try:  # Cmd+Q → graceful shutdown instead of an abrupt exit
                 root.createcommand("tk::mac::Quit", self.stop)
             except tk.TclError:
                 pass
+            _mac_become_agent()
         root.after(PUMP_MS, self._pump)
         try:
             root.mainloop()
@@ -111,6 +114,9 @@ class TkApprovalUI(ApprovalUI):
             now = time.time()
             for window in list(self._windows.values()):
                 window.tick(now, len(self._windows))
+            self._pumps += 1
+            if self._windows and self._pumps % 10 == 0:
+                _mac_float_windows(bring_front=False)  # Tk may reset level/behaviour on some events
         finally:
             if self._quit or self._should_stop():
                 self._root.quit()
@@ -245,9 +251,10 @@ class _ApprovalWindow:  # pragma: no cover - GUI
         x = max(20, (top.winfo_screenwidth() - width) // 2 + offset)
         y = 90 + offset
         top.geometry(f"+{x}+{y}")
+        top.update_idletasks()  # make sure the native window exists before configuring it
+        _mac_float_windows(bring_front=True)
         top.lift()
         top.focus_force()
-        _bring_app_to_front()
 
     def _arm(self) -> None:
         if not self.closed:
@@ -280,15 +287,66 @@ class _ApprovalWindow:  # pragma: no cover - GUI
             pass
 
 
-def _bring_app_to_front() -> None:  # pragma: no cover - GUI
-    """Best effort: make our process the active app on macOS so the popup also gets focus.
-    Windows are already floating above other apps via ``-topmost``; this only adds focus.
-    Requires the optional ``pyobjc-framework-Cocoa`` (``pip install 'mcpguard[macos]'``)."""
+# --------------------------------------------------------------------------- macOS Spaces
+# A full-screen app lives in its own Space, and ordinary windows of other apps never appear
+# there — Tk's ``-topmost`` alone is not enough. Two things fix that:
+#   * the daemon runs as an "agent" app (no Dock icon / menu bar), which may place windows over
+#     other apps' full-screen Spaces without macOS switching Spaces;
+#   * every popup window joins all Spaces as a full-screen auxiliary window, at status-bar level.
+_CAN_JOIN_ALL_SPACES = 1 << 0
+_MOVE_TO_ACTIVE_SPACE = 1 << 1  # mutually exclusive with CanJoinAllSpaces
+_FULL_SCREEN_PRIMARY = 1 << 7  # Tk sets this on resizable windows; exclusive with Auxiliary
+_FULL_SCREEN_AUXILIARY = 1 << 8
+_FULL_SCREEN_NONE = 1 << 9
+_STATUS_WINDOW_LEVEL = 25  # NSStatusWindowLevel: above normal and floating windows
+_ACTIVATION_POLICY_ACCESSORY = 1
+_warned_no_appkit = False
+
+
+def _appkit() -> Any:  # pragma: no cover - GUI
+    global _warned_no_appkit
     if sys.platform != "darwin":
+        return None
+    try:
+        import AppKit  # type: ignore[import-not-found]
+    except ImportError:
+        if not _warned_no_appkit:
+            _warned_no_appkit = True
+            log.warning("pyobjc-framework-Cocoa is not installed: popups cannot appear over full-screen apps")
+        return None
+    return AppKit
+
+
+def _mac_become_agent() -> None:  # pragma: no cover - GUI
+    appkit = _appkit()
+    if appkit is not None:
+        try:
+            appkit.NSApplication.sharedApplication().setActivationPolicy_(_ACTIVATION_POLICY_ACCESSORY)
+        except Exception:
+            log.debug("could not switch to agent activation policy", exc_info=True)
+
+
+def _mac_float_windows(bring_front: bool) -> None:  # pragma: no cover - GUI
+    """Put every visible window of this process on all Spaces (full-screen ones included),
+    above other apps; optionally bring them to the front and take keyboard focus."""
+    appkit = _appkit()
+    if appkit is None:
         return
     try:
-        from AppKit import NSApplication  # type: ignore[import-not-found]
-
-        NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
+        app = appkit.NSApplication.sharedApplication()
+        clear = _MOVE_TO_ACTIVE_SPACE | _FULL_SCREEN_PRIMARY | _FULL_SCREEN_NONE
+        for win in app.windows():
+            if not win.isVisible():
+                continue
+            behavior = (int(win.collectionBehavior()) & ~clear) | _CAN_JOIN_ALL_SPACES | _FULL_SCREEN_AUXILIARY
+            if int(win.collectionBehavior()) != behavior:
+                win.setCollectionBehavior_(behavior)
+            if int(win.level()) != _STATUS_WINDOW_LEVEL:
+                win.setLevel_(_STATUS_WINDOW_LEVEL)
+            win.setHidesOnDeactivate_(False)
+            if bring_front:
+                win.orderFrontRegardless()
+        if bring_front:
+            app.activateIgnoringOtherApps_(True)  # keyboard focus, so Esc works immediately
     except Exception:
-        pass
+        log.debug("could not configure popup windows for Spaces", exc_info=True)

@@ -7,10 +7,9 @@ requires-python = ">=3.10"
 dependencies = [
     "aiohttp>=3.9",
     "mcp>=1.12",
+    # macOS: lets the popup join every Space, including other apps' full-screen Spaces
+    "pyobjc-framework-Cocoa>=10; sys_platform == 'darwin'",
 ]
-
-[project.optional-dependencies]
-macos = ["pyobjc-framework-Cocoa>=10; sys_platform == 'darwin'"]
 
 [project.scripts]
 mcpguard = "mcpguard.cli:main"

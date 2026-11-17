@@ -70,6 +70,7 @@ Claude ── tools/call id=7 ──▶ interceptor
 * **The daemon matches decisions by request.** Each pending approval has its own future, deadline and connection, and the decision travels back on the connection that asked. Answering popups in any order is safe; the tests resolve 20 concurrent requests in random order and 5 in reverse order.
 * **One popup per request.** Popups cascade, each with its own countdown and a count of how many requests are waiting.
 * **Writes are serialised.** Many tasks write to Claude's stdout (forwarded responses, denials, errors), so all writes go through one writer thread, which keeps lines whole and in order. A slow reader on Claude's side can't stall the event loop.
+* **Popups appear over full-screen apps.** On macOS a full-screen app has its own Space, and other apps' windows normally never show there. Tk's "always on top" setting is not enough on its own. So the daemon runs as a background agent app (no Dock icon), and each popup window is set (through AppKit) to appear in every Space, including full-screen ones, above normal windows. A test opens a real full-screen window and confirms through macOS's window list that the popups are on screen and that no Space switch happens.
 * **Tk runs on the main thread.** Tk must own the main thread on macOS, so with the Tk backend the asyncio broker runs on a worker thread. The UI's public methods only enqueue commands, and a Tk `after()` loop drains the queue, so Tk is never called from another thread.
 
 ## 5. Failure handling

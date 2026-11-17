@@ -30,7 +30,7 @@ Claude Desktop and Claude Web reach MCP servers along **different paths**, so MC
 
 ## Features
 
-- **Popup for every call.** It stays on top of other windows and shows the source app, client, MCP server, tool, arguments (formatted JSON) and the server's own hints (destructive, read-only, reaches external systems). It also shows a countdown and how many requests are waiting.
+- **Popup for every call.** It stays on top of other windows, including full-screen apps, and shows the source app, client, MCP server, tool, arguments (formatted JSON) and the server's own hints (destructive, read-only, reaches external systems). It also shows a countdown and how many requests are waiting.
 - **Held until you decide.** If allowed, the request is forwarded unchanged. If blocked, the server never sees it, and Claude receives a clear `isError` result it can explain to you. A JSON-RPC error is available as an option.
 - **Concurrent requests.** Each request gets its own popup, deadline and connection, and you can answer them in any order. Other traffic keeps flowing while you decide.
 - **Reliability.**
@@ -63,12 +63,12 @@ source .venv/bin/activate
 mcpguard --help
 ```
 
-Optional on macOS, to let a popup also take keyboard focus: `uv pip install -e '.[macos]'`. This installs `pyobjc`. Popups stay on top without it.
+On macOS this also installs `pyobjc-framework-Cocoa`, which lets the popup appear on top of full-screen apps.
 
 ## Try the popup first (no Claude needed)
 
 ```bash
-mcpguard daemon                    # terminal 1: the approval service, shown in the Dock as "MCP Guard"
+mcpguard daemon                    # terminal 1: the approval service (a background app with no Dock icon)
 mcpguard test-popup --count 3      # terminal 2: three simultaneous fake requests
 ```
 
