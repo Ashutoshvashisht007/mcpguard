@@ -97,8 +97,8 @@ def cmd_gateway(args: argparse.Namespace) -> int:
         if args.public_url:
             print(f"  connector URL  : {args.public_url.rstrip('/')}{gateway.mcp_path}", file=sys.stderr)
         else:
-            print(f"  expose it with : cloudflared tunnel --url http://{args.host}:{args.port}", file=sys.stderr)
-            print(f"  connector URL  : https://<tunnel-host>{gateway.mcp_path}", file=sys.stderr)
+            print(f"  expose it with : ngrok http {args.port}", file=sys.stderr)
+            print(f"  connector URL  : https://<ngrok-host>{gateway.mcp_path}", file=sys.stderr)
         print("  (keep the path secret — it is the only thing protecting the public URL)\n", file=sys.stderr, flush=True)
         await server
 
@@ -289,10 +289,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--name", default="remote-mcp", help="server name shown in the popup")
     p.add_argument("--source", default="Claude Web", help="label for the requesting app")
     p.add_argument("--decision-timeout", type=float, default=60.0,
-                   help="seconds to wait for a decision (keep below your tunnel's response timeout, ~100s on Cloudflare)")
+                   help="seconds to wait for a decision (keep it moderate: claude.ai may give up on slow tool calls)")
     p.add_argument("--path-token", help="secret path segment (default: generated once and stored in ~/.mcpguard)")
     p.add_argument("--rotate-token", action="store_true", help="generate a new secret path segment")
-    p.add_argument("--public-url", help="public base URL of your tunnel, to print the full connector URL")
+    p.add_argument("--public-url", help="public ngrok URL (e.g. https://abcd-1234.ngrok-free.app), to print the full connector URL")
     p.add_argument("--upstream-header", action="append", help="extra header for upstream requests, 'Name: value'")
     p.add_argument("--allow-origin", action="append", help="browser Origin allowed to call the gateway")
     p.set_defaults(func=cmd_gateway)

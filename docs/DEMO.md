@@ -1,6 +1,6 @@
 # Demo video script (about 4 minutes)
 
-The assignment asks for a video showing approval and blocking. This script covers both paths, plus concurrency and failure handling. Record at 1080p and hide any personal details: the account email in Claude's sidebar and the tunnel's hostname.
+The assignment asks for a video showing approval and blocking. This script covers both paths, plus concurrency and failure handling. Record at 1080p and hide any personal details: the account email in Claude's sidebar and the ngrok hostname.
 
 ## 0. Prep (off camera)
 
@@ -15,10 +15,10 @@ Restart Claude Desktop (Cmd+Q, then reopen). For the web part, start these in th
 ```bash
 mcpguard demo-server --transport http --port 9000
 mcpguard gateway --upstream http://127.0.0.1:9000/mcp --name notes-remote
-cloudflared tunnel --url http://127.0.0.1:8080
+ngrok http 8080
 ```
 
-Add `https://<tunnel-host>/<token>/mcp` as a custom connector on claude.ai (Settings → Connectors → Add custom connector).
+Add `https://<ngrok-host>/<token>/mcp` as a custom connector on claude.ai (Settings → Connectors → Add custom connector).
 
 ## 1. Introduction (20 s)
 
@@ -65,4 +65,4 @@ On claude.ai with the connector enabled, prompt: *"Use notes-remote to add 19 an
 mcpguard uninstall    # restores claude_desktop_config.json exactly
 ```
 
-Remove the custom connector on claude.ai and stop the tunnel.
+Remove the custom connector on claude.ai and stop ngrok.

@@ -26,7 +26,7 @@ A browser extension or a TLS-intercepting proxy on the user's machine **cannot**
                           │      │ unix socket (0600)        │  • timeout / audit log   │   │
                           │      │                           └──────────────────────────┘   │
  claude.ai ─▶ Anthropic ─HTTPS─▶ tunnel ─▶ mcpguard gateway ──HTTP──▶ remote MCP server     │
- (browser)    cloud       │      (cloudflared/ngrok)                                        │
+ (browser)    cloud       │      (ngrok)                                                    │
                           └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -131,6 +131,6 @@ The SDK this was built and tested against (MCP Python SDK 2.3) speaks every rele
 
 * **Desktop Extensions (`.mcpb`/`.dxt`)** installed through Claude Desktop's UI aren't listed in `claude_desktop_config.json`, so `mcpguard install` can't wrap them. Add the same server as a regular config entry instead.
 * **Connectors Anthropic hosts** (first-party integrations) run entirely in Anthropic's infrastructure. Only servers whose traffic you route through the gateway can be gated.
-* **Proxy timeouts on the web path.** Long waits can hit proxy timeouts (Cloudflare closes idle responses after about 100 s), and claude.ai may also give up on a slow tool call. Keep the gateway's `--decision-timeout` moderate. A future improvement is to switch the response to SSE and send keep-alive pings while waiting, as the 2026-07-28 transport does.
+* **Proxy timeouts on the web path.** Long waits can hit timeouts in the tunnel (ngrok), and claude.ai may also give up on a slow tool call. Keep the gateway's `--decision-timeout` moderate. A future improvement is to switch the response to SSE and send keep-alive pings while waiting, as the 2026-07-28 transport does.
 * **Batch cancellation.** Cancelling one item of a pending JSON-RPC batch cancels the whole batch's approval. Batches were removed from the protocol after 2025-03-26.
 * **Platforms.** Developed and tested on macOS. Linux should work (Tk popup, Unix socket). The Windows path (TCP broker, config location) is implemented but untested.

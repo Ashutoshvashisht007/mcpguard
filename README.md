@@ -19,11 +19,11 @@ Claude Desktop and Claude Web reach MCP servers along **different paths**, so MC
                         mcpguard daemon  ◀── popup (Allow / Block), timeout, audit log
                                 ▲
                                 │
- claude.ai ─▶ Anthropic cloud ─HTTPS─▶ tunnel ─▶ mcpguard gateway ─▶ remote MCP server
+ claude.ai ─▶ Anthropic cloud ─HTTPS─▶ ngrok ─▶ mcpguard gateway ─▶ remote MCP server
 ```
 
 * **Claude Desktop** starts each local MCP server in `claude_desktop_config.json` as a subprocess and talks JSON-RPC over stdin/stdout. `mcpguard install` changes each entry so Claude starts `mcpguard wrap -- <original command>`. The wrapper is a transparent proxy that holds `tools/call` requests until you decide.
-* **Claude Web.** claude.ai calls custom connectors **from Anthropic's cloud**, not from your browser. A local proxy or browser extension therefore can't see those calls, let alone block them. `mcpguard gateway` is a reverse proxy placed in front of the MCP server. You expose it with a tunnel and register the tunnel URL as the connector. Remote connectors added in Claude Desktop take the same cloud path, so the gateway covers them too.
+* **Claude Web.** claude.ai calls custom connectors **from Anthropic's cloud**, not from your browser. A local proxy or browser extension therefore can't see those calls, let alone block them. `mcpguard gateway` is a reverse proxy placed in front of the MCP server. You expose it with [ngrok](https://ngrok.com) and register the ngrok URL as the connector. Remote connectors added in Claude Desktop take the same cloud path, so the gateway covers them too.
 * **`mcpguard daemon`** owns the popup, the decision timeout and the audit log. Interceptors reach it over a private Unix socket. It starts automatically the first time it's needed.
 
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers the request lifecycle, concurrency model, failure handling, security measures and the alternatives I rejected.
@@ -51,7 +51,7 @@ Claude Desktop and Claude Web reach MCP servers along **different paths**, so MC
 
 - Python **3.10+** with Tk. The python.org installers include Tk. On Homebrew Python, run `brew install python-tk`. Without Tk, macOS falls back to a native dialog.
 - Claude Desktop, for the Desktop path.
-- For the Web path: a Claude plan that allows custom connectors (see Settings → Connectors) and a tunnel such as [`cloudflared`](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) (`brew install cloudflared`) or ngrok.
+- For the Web path: a Claude account that can add custom connectors (it works on the Free plan) and [ngrok](https://ngrok.com/download). Install it with `brew install ngrok`, then link your free ngrok account once with `ngrok config add-authtoken <your-token>`.
 - Developed and tested on macOS. Linux should work. The Windows code path is implemented but untested.
 
 ## Installation
@@ -99,16 +99,17 @@ mcpguard demo-server --transport http --port 9000
 mcpguard gateway --upstream http://127.0.0.1:9000/mcp --name notes-remote --port 8080
 
 # 3. a public HTTPS URL for the gateway
-cloudflared tunnel --url http://127.0.0.1:8080
+ngrok http 8080
 ```
 
-On claude.ai, open **Settings → Connectors → Add custom connector** and enter `https://<tunnel-host>/<secret-token>/mcp`. Enable the connector in a chat and ask Claude to use it. Each tool call triggers the same popup, labelled *Claude Web*.
+ngrok prints a `Forwarding` line such as `https://abcd-1234.ngrok-free.app -> http://localhost:8080`. On claude.ai, open **Settings → Connectors** (called **Plugins** on newer accounts), add a custom connector, and enter `https://<ngrok-host>/<secret-token>/mcp`. Enable the connector in a chat and ask Claude to use it. Each tool call triggers the same popup, labelled *Claude Web*.
 
 - The secret path segment is created once and stored in `~/.mcpguard/gateway-token`. Rotate it with `--rotate-token`.
-- `--public-url https://<tunnel-host>` makes the gateway print the full connector URL.
+- `--public-url https://<ngrok-host>` makes the gateway print the full connector URL.
+- ngrok's dashboard at http://127.0.0.1:4040 shows every request claude.ai sends, which helps with debugging. Requests to any path other than `/<secret-token>/mcp` get a 404 by design.
 - If the upstream needs credentials, add them with `--upstream-header "Authorization: Bearer …"`.
-- Keep `--decision-timeout` (default 60 s) under the tunnel's response timeout. Cloudflare closes idle responses after about 100 s.
-- When finished, remove the connector and stop the tunnel.
+- Keep `--decision-timeout` (default 60 s) moderate. claude.ai may give up on a tool call that waits too long.
+- When finished, remove the connector and stop ngrok (Ctrl+C).
 
 ## Configuration
 
@@ -187,6 +188,6 @@ docs/                 architecture and demo script
 
 - Desktop Extensions installed through Claude's UI (`.mcpb`) aren't listed in `claude_desktop_config.json`. To protect one, add the same server as a config entry.
 - Anthropic-hosted connectors run entirely in Anthropic's cloud. Only servers whose traffic goes through the gateway can be gated.
-- On the web path, very long waits can hit tunnel or claude.ai timeouts. Keep the gateway timeout moderate.
+- On the web path, very long waits can hit ngrok or claude.ai timeouts. Keep the gateway timeout moderate.
 
 More detail is in [docs/ARCHITECTURE.md § Known limitations](docs/ARCHITECTURE.md#9-known-limitations).
