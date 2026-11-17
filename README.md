@@ -4,7 +4,7 @@
 
 MCP Guard runs in the background and intercepts Model Context Protocol requests. It holds each request until you decide, shows what is about to run (server, tool, arguments, the server's own risk hints) and then forwards the request or returns a denial to Claude. Each simultaneous request is handled on its own. If anything breaks, requests are blocked (it fails closed), and every decision goes to an audit log.
 
-> 🎥 **Demo video:** _add link here_  ·  📐 **Architecture:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)  ·  🎬 **Demo script:** [docs/DEMO.md](docs/DEMO.md)
+> 🎥 **Demo video:** _add link here_  ·  📄 **Design doc (PDF):** [docs/design-doc.pdf](docs/design-doc.pdf)  ·  📐 **Architecture:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)  ·  🎬 **Demo script:** [docs/DEMO.md](docs/DEMO.md)
 
 ---
 
